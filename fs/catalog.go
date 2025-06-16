@@ -10,10 +10,20 @@ package fs
 
 type Oid uint32
 
-func OidExistsInCatalog(oid Oid) bool {
-	return true
+const NextDataOid Oid = 1
+const NextKVOid Oid = 1000
+
+func KVOidExistsInCatalog(oid Oid) bool {
+
+	return false
 }
 
-func GetNewOid() Oid {
-	return 42
+func GetNewKVOid() Oid {
+	var new_kv_oid Oid
+	return new_kv_oid
+}
+
+func GetNewDataOid() Oid {
+	var new_data_oid Oid
+	return new_data_oid
 }

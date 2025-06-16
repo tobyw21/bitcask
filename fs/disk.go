@@ -2,6 +2,10 @@ package fs
 
 import "time"
 
+/*
+	disk.go defines KV entry stores on the disk
+*/
+
 type KVEntry[T any] struct {
 	Crc 		string
 	TimeStamp 	time.Time
