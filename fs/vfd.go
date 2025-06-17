@@ -1,7 +1,7 @@
 package fs
 
 import (
-	"container/heap"
+	"container/list"
 	"os"
 	"syscall"
 )
@@ -13,97 +13,114 @@ import (
 */
 
 type Vfd struct {
-	id        uint8
+	id        int8
 	file_path string
 	os_fd     int
 	is_open   bool
-	use_count uint8
-	index     int8
 }
-
 type VfdManager struct {
-	next_vfd_id uint8
-	max_opens   uint8
-	open_vfds   VfdPriorityQueue // currently opened fds
-	vfd_table   map[uint8]Vfd    // Vfd.id : Vfd
+	next_vfd_id int8
+	max_opens   int
+	open_vfds   *list.List             // currently opened fds
+	vfd_lru_map map[int8]*list.Element // vfd.id : element(Vfd)
+	vfd_table   map[string]Vfd         // Vfd.path : Vfd
 }
 
 func NewVfdMgr() *VfdManager {
 	return &VfdManager{
 		next_vfd_id: 1,
 		max_opens:   5,
-		open_vfds:   make(VfdPriorityQueue, 5),
-		vfd_table:   make(map[uint8]Vfd),
+		open_vfds:   list.New(),                   // the front is recently used, tail is least used
+		vfd_lru_map: make(map[int8]*list.Element), // keep a index of vfd.id : open vfd element
+		vfd_table:   make(map[string]Vfd),         // vfd.file_path : Vfd
 	}
+
 }
 
-func (vfdmgr *VfdManager) vfd_open(path string) uint8 {
-	// check if path is already opened, dunno if there's any efficient implementation
-	for vfd_id, vfd := range vfdmgr.vfd_table {
+func (vfdmgr *VfdManager) VfdOpen(path string) (int8, error) {
 
-		// if vfd has path
-		if vfd.file_path == path && vfd.id == vfd_id {
-			// if vfd is opened then dont open just return the same fd
-			if vfd.is_open {
-				return vfd_id
-			} else {
-				os_fd, err := syscall.Open(path, os.O_RDWR, 0o660)
-
-				if err != nil {
-					panic(err)
-				}
-
-				vfd.is_open = true
-				vfd.os_fd = os_fd
-				vfd.use_count += 1
-				return vfd_id
+	// use path to open vfd
+	if vfd, ok := vfdmgr.vfd_table[path]; ok {
+		if vfd.is_open {
+			e := vfdmgr.vfd_lru_map[vfd.id]
+			vfdmgr.open_vfds.PushFront(e)
+			return vfd.id, nil
+		} else {
+			// if close, open it and manipulate with vfd lru map
+			// remove current and add to open vfds front
+			fd, err := syscall.Open(path, os.O_RDWR|os.O_CREATE, 0o644)
+			if err != nil {
+				return -1, err
 			}
+
+			vfd.is_open = true
+			vfd.os_fd = fd
+			vfd.file_path = path
+			e := vfdmgr.vfd_lru_map[vfd.id]
+			vfdmgr.open_vfds.PushFront(e)
+			return vfd.id, nil
+
 		}
 	}
-
-	// before opening, apply lru to close un-needed vfd
-	if vfdmgr.open_vfds.Len() > int(vfdmgr.max_opens) {
-		vfd_id_to_close := vfdmgr.open_vfds.Pop().(uint8)
-		os_fd_to_close := vfdmgr.vfd_table[vfd_id_to_close].os_fd
-		syscall.Close(os_fd_to_close)
-		heap.Remove(&vfdmgr.open_vfds, int(vfdmgr.vfd_table[vfd_id_to_close].index))
+	// if over max open
+	if vfdmgr.open_vfds.Len() >= vfdmgr.max_opens {
+		// close least used
+		e := vfdmgr.open_vfds.Back()
+		vfd := e.Value.(Vfd)
+		vfdmgr.open_vfds.Remove(e)
+		// fmt.Printf("Closing vfd: %d, with fd: %d\n", vfd.id, vfd.os_fd)
+		// clean lru list and vfd table mapping
+		delete(vfdmgr.vfd_table, vfd.file_path)
+		delete(vfdmgr.vfd_lru_map, vfd.id)
+		err := syscall.Close(vfd.os_fd)
+		if err != nil {
+			return -1, err
+		}
 	}
-
-	// dealing with opening a new file
+	new_vfd_id := vfdmgr.next_vfd_id
 	vfdmgr.next_vfd_id += 1
-	vfd_id := vfdmgr.next_vfd_id
-	os_fd, err := syscall.Open(path, os.O_RDWR, 0o660)
-
+	// deal with unopened new file
+	fd, err := syscall.Open(path, os.O_RDWR|os.O_CREATE, 0o644)
 	if err != nil {
-		panic(err)
+		return -1, err
 	}
 
 	vfd := Vfd{
-		id:        vfd_id,
+		id:        new_vfd_id,
 		file_path: path,
-		os_fd:     os_fd,
+		os_fd:     fd,
 		is_open:   true,
-		use_count: 1,
-		index:     int8(vfdmgr.open_vfds.Len()),
 	}
+	vfdmgr.vfd_table[path] = vfd
 
-	vfdmgr.vfd_table[vfd_id] = vfd
-	vfdmgr.open_vfds.Push(OpenedVfdItem{vfd_id: vfd_id, priority: vfd.use_count, index: int8(vfdmgr.open_vfds.Len())})
+	vfd_elem := vfdmgr.open_vfds.PushFront(vfd)
+	vfdmgr.vfd_lru_map[new_vfd_id] = vfd_elem
 
-	return vfd_id
+	return vfd.id, nil
 }
 
-func (vfdmgr *VfdManager) vfd_write(vfd_id uint8, data []byte) {
+func (vfdmgr *VfdManager) VfdWrite(vfd_id int8, data []byte) {
 	// make data to be written is a stream of bytes... for now
 }
 
-func (vfdmgr *VfdManager) vfd_read(vfd_id uint8) {
+func (vfdmgr *VfdManager) VfdRead(vfd_id int8) {
 
 }
 
-func (vfdmgr *VfdManager) vfd_close(vfd_id uint8) {
+func (vfdmgr *VfdManager) VfdClose(vfd_id int8) error {
+	if e, ok := vfdmgr.vfd_lru_map[vfd_id]; ok {
+		vfd := e.Value.(Vfd)
+		// clean lru list and vfd table mapping
+		vfdmgr.open_vfds.Remove(e)
+		delete(vfdmgr.vfd_table, vfd.file_path)
+		delete(vfdmgr.vfd_lru_map, vfd.id)
+		err := syscall.Close(vfd.os_fd)
+		if err != nil {
+			return err
+		}
 
-	os_fd_to_close := vfdmgr.vfd_table[vfd_id].os_fd
-	syscall.Close(os_fd_to_close)
-	heap.Remove(&vfdmgr.open_vfds, int(vfdmgr.vfd_table[vfd_id].index))
+		return nil
+	}
+	return os.ErrClosed
+
 }
