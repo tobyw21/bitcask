@@ -19,6 +19,7 @@ type Vfd struct {
 	os_fd     int
 	is_open   bool
 }
+
 type VfdManager struct {
 	next_vfd_id int8
 	max_opens   int
