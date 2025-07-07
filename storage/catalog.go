@@ -1,4 +1,4 @@
-package fs
+package storage
 
 /*
 	catalog.go generates oid to KV set to save the files on the

@@ -1,7 +1,7 @@
 BitCask
 ===========================
 
-implementing according to the [paper](https://riak.com/assets/bitcask-intro.pdf)
+implementing according to this [paper](https://riak.com/assets/bitcask-intro.pdf)
 
 
 ideas...
