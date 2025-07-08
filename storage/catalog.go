@@ -2,6 +2,8 @@ package storage
 
 import (
 	"os"
+
+	vfd "github.com/tobyw21/bitcask/vfd"
 )
 
 /*
@@ -17,34 +19,35 @@ type Oid uint32
 type Catalog struct {
 	NextDataOid Oid
 	NextKvOid   Oid
-	OidList     []Oid
-	KvStoreMap  []map[string]Oid
+	KvStoreMap  map[string]Oid // kv name : Oid
 }
 
-func LoadCatalog(vfdmgr *VfdManager) *Catalog {
-	var path string = "data/catalog"
+func Serialise(c Catalog) []byte {
+	return make([]byte, 0)
+}
+
+func Deserialise(b []byte) Catalog {
+	return Catalog{}
+}
+
+func CatalogLoad(vfdmgr *vfd.VfdManager, path string) *Catalog {
+
+	catalog := Catalog{
+		NextDataOid: 0,
+		NextKvOid:   0,
+		KvStoreMap:  make(map[string]Oid),
+	}
+
 	if _, err := os.Stat(path); err != nil {
 
-		return &Catalog{
-			NextDataOid: 0,
-			NextKvOid:   0,
-			KvStoreMap:  make([]map[string]Oid, 0),
-		}
+		return &catalog
 	} else {
 		vid, err := vfdmgr.VfdOpen(path)
 
 		if err != nil {
 			panic("Unable to open file " + path)
 		}
-		var catalog Catalog
-		// := Catalog{
-		// 	NextDataOid: 0,
-		// 	NextKvOid:   0,
-		// 	KvStoreMap:  make([]map[string]Oid, 0),
-		// }
-
-		// buffer := make([]byte, 56)
-		// vfdmgr.VfdRead(vid, &buffer, 0)
+		// load catalog from file
 
 		vfdmgr.VfdClose(vid)
 
@@ -62,14 +65,12 @@ func (c *Catalog) GetDatNextOid() Oid {
 	return c.NextDataOid
 }
 
-func (c *Catalog) CatalogWrite(vfdmgr *VfdManager) {
-	var path string = "data/catalog"
+func (c *Catalog) CatalogWrite(vfdmgr *vfd.VfdManager, path string) {
+
 	vid, err := vfdmgr.VfdOpen(path)
 	if err != nil {
 		panic("Unable to open file " + path)
 	}
-
-	// vfdmgr.VfdWrite(vid, buffer, 0)
 
 	vfdmgr.VfdClose(vid)
 }
