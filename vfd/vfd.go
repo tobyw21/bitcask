@@ -9,7 +9,7 @@ import (
 
 /*
 	vfd.go defines virtual file descriptor. we can't do open() and close() syscall
-		all the time because they are expensive.
+		all the time without limitation and prevent fd leak
 
 */
 
@@ -149,7 +149,7 @@ func (vfdmgr *VfdManager) VfdWrite(vfd_id int8, data []byte, offset int64) (int,
 	return -1, errors.New("unable to find Vfd Id corresponding file")
 }
 
-func (vfdmgr *VfdManager) VfdRead(vfd_id int8, buffer *[]byte, offset int64) (int, error) {
+func (vfdmgr *VfdManager) VfdRead(vfd_id int8, buffer []byte, offset int64) (int, error) {
 	// can't assume it is always being opened
 	// if not in lru map, then find it in vfd table
 	// repoen it, change lru and other metadata
@@ -159,7 +159,7 @@ func (vfdmgr *VfdManager) VfdRead(vfd_id int8, buffer *[]byte, offset int64) (in
 		vfd := e.Value.(Vfd)
 		vfdmgr.open_vfds.Remove(e)
 		vfdmgr.open_vfds.PushFront(e)
-		nread, err := syscall.Pread(vfd.os_fd, *buffer, offset)
+		nread, err := syscall.Pread(vfd.os_fd, buffer, offset)
 
 		if err != nil {
 			return -1, err
@@ -181,7 +181,7 @@ func (vfdmgr *VfdManager) VfdRead(vfd_id int8, buffer *[]byte, offset int64) (in
 			vfd_elem := vfdmgr.open_vfds.PushFront(vfd)
 			vfdmgr.vfd_lru_map[vfd_id] = vfd_elem
 			vfdmgr.vfd_path_id[vfd.file_path] = vfd.id
-			nread, err := syscall.Pread(vfd.os_fd, *buffer, offset)
+			nread, err := syscall.Pread(vfd.os_fd, buffer, offset)
 
 			if err != nil {
 				return -1, err

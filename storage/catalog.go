@@ -1,6 +1,8 @@
 package storage
 
 import (
+	"bytes"
+	"encoding/gob"
 	"os"
 
 	vfd "github.com/tobyw21/bitcask/vfd"
@@ -22,14 +24,6 @@ type Catalog struct {
 	KvStoreMap  map[string]Oid // kv name : Oid
 }
 
-func Serialise(c Catalog) []byte {
-	return make([]byte, 0)
-}
-
-func Deserialise(b []byte) Catalog {
-	return Catalog{}
-}
-
 func CatalogLoad(vfdmgr *vfd.VfdManager, path string) *Catalog {
 
 	catalog := Catalog{
@@ -37,22 +31,31 @@ func CatalogLoad(vfdmgr *vfd.VfdManager, path string) *Catalog {
 		NextKvOid:   0,
 		KvStoreMap:  make(map[string]Oid),
 	}
+	fi, err := os.Stat(path)
 
-	if _, err := os.Stat(path); err != nil {
-
-		return &catalog
-	} else {
+	if err == nil {
 		vid, err := vfdmgr.VfdOpen(path)
 
+		defer vfdmgr.VfdClose(vid)
 		if err != nil {
 			panic("Unable to open file " + path)
 		}
 		// load catalog from file
 
-		vfdmgr.VfdClose(vid)
+		s := fi.Size()
+		tmp_buf := make([]byte, s)
+		vfdmgr.VfdRead(vid, tmp_buf, 0)
+
+		var buf *bytes.Buffer = bytes.NewBuffer(tmp_buf)
+		dec := gob.NewDecoder(buf)
+
+		dec.Decode(&catalog)
 
 		return &catalog
 	}
+
+	return &catalog
+
 }
 
 func (c *Catalog) GetKvNextOid() Oid {
@@ -68,9 +71,15 @@ func (c *Catalog) GetDatNextOid() Oid {
 func (c *Catalog) CatalogWrite(vfdmgr *vfd.VfdManager, path string) {
 
 	vid, err := vfdmgr.VfdOpen(path)
+	defer vfdmgr.VfdClose(vid)
 	if err != nil {
 		panic("Unable to open file " + path)
 	}
+	var buf bytes.Buffer
+	enc := gob.NewEncoder(&buf)
 
-	vfdmgr.VfdClose(vid)
+	enc.Encode(c)
+
+	vfdmgr.VfdWrite(vid, buf.Bytes(), 0)
+
 }
