@@ -58,7 +58,7 @@ should always have a `data/` dir which contains `data/catalog` and `data/KV.oid/
 
 or a store name based dir would be easier to implement
 
-no buffer pool, it's a lightweight KV store DB so no need.
+no buffer pool (for now), it's a lightweight KV store DB so no need.
 
 no indexing, no need, search is (almost) linear O(1)
 
