@@ -5,6 +5,7 @@ import (
 	"container/list"
 	"encoding/gob"
 
+	"github.com/tobyw21/bitcask/include"
 	vfd "github.com/tobyw21/bitcask/vfd"
 )
 
@@ -16,21 +17,19 @@ import (
 		used Oids and its mapping to corresponding KV store
 */
 
-type Oid uint32
-
 type Catalog struct {
-	NextDataOid  Oid
-	NextKvOid    Oid
-	KvStoreMap   map[string]Oid     // kv name : Oid
-	DataStoreMap map[Oid]*list.List // kv oid: list of files
+	NextDataOid  include.Oid
+	NextKvOid    include.Oid
+	KvStoreMap   map[string]include.Oid    // kv name : Oid
+	DataStoreMap map[include.Oid]*list.List // kv oid: list of files
 }
 
-func (c *Catalog) GetKvNextOid() Oid {
+func (c *Catalog) GetKvNextOid() include.Oid {
 	c.NextKvOid++
 	return c.NextKvOid
 }
 
-func (c *Catalog) GetDatNextOid() Oid {
+func (c *Catalog) GetDatNextOid() include.Oid {
 	c.NextDataOid++
 	return c.NextDataOid
 }

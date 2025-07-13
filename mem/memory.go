@@ -6,19 +6,20 @@ package mem
 
 import (
 	"time"
+
+	"github.com/tobyw21/bitcask/include"
 )
 
-type Oid uint32
 type TimeStampType time.Time
 
 type KeyDir struct {
-	FileId    Oid
+	FileId    include.Oid
 	ValueSz   uint32
 	ValuePos  uint32
 	TimeStamp TimeStampType
 }
 
-func NewKeyDir(fileid Oid, valsize uint32, valpos uint32, timestmp TimeStampType) KeyDir {
+func NewKeyDir(fileid include.Oid, valsize uint32, valpos uint32, timestmp TimeStampType) KeyDir {
 	return KeyDir{
 		FileId:    fileid,
 		ValueSz:   valsize,
