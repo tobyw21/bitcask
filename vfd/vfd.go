@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"syscall"
+	ospath "path"
 )
 
 /*
@@ -27,6 +28,38 @@ type VfdManager struct {
 	vfd_lru_map map[int8]*list.Element // vfd.id : element(Vfd)
 	vfd_table   map[int8]Vfd           // Vfd.path : Vfd
 	vfd_path_id map[string]int8        // path: vfd.id
+}
+
+type VfdWriter struct {
+	Vfdid  int8
+	Offset int64
+	Vfdmgr *VfdManager
+}
+
+type VfdReader struct {
+	Vfdid  int8
+	Offset int64
+	Vfdmgr *VfdManager
+}
+
+func (w *VfdWriter) Write(p []byte) (int, error) {
+	nwrite, err := w.Vfdmgr.vfdWrite(w.Vfdid, p, w.Offset)
+
+	if err != nil {
+		return -1, err
+	}
+
+	return nwrite, err
+}
+
+func (r *VfdReader) Read(p []byte) (int, error) {
+	nread, err := r.Vfdmgr.vfdRead(r.Vfdid, p, r.Offset)
+
+	if err != nil {
+		return -1, err
+	}
+
+	return nread, err
 }
 
 func NewVfdMgr() *VfdManager {
@@ -53,7 +86,7 @@ func (vfdmgr *VfdManager) VfdOpen(path string) (int8, error) {
 		} else {
 			// if close, open it and manipulate with vfd lru map
 			// remove current and add to open vfds front
-			fd, err := syscall.Open(path, syscall.O_RDWR|syscall.O_CREAT, 0o644)
+			fd, err := syscall.Open(path, syscall.O_RDWR|syscall.O_CREAT, 0o755)
 			if err != nil {
 				return -1, err
 			}
@@ -86,7 +119,12 @@ func (vfdmgr *VfdManager) VfdOpen(path string) (int8, error) {
 	new_vfd_id := vfdmgr.next_vfd_id
 	vfdmgr.next_vfd_id += 1
 	// deal with unopened new file
-	fd, err := syscall.Open(path, syscall.O_RDWR|syscall.O_CREAT, 0o644)
+	p := ospath.Dir(path)
+	err := os.MkdirAll(p, 0o755)
+	if err != nil {
+		return -1, err
+	}
+	fd, err := syscall.Open(path, syscall.O_RDWR|syscall.O_CREAT, 0o755)
 	if err != nil {
 		return -1, err
 	}
@@ -106,7 +144,7 @@ func (vfdmgr *VfdManager) VfdOpen(path string) (int8, error) {
 	return vfd.id, nil
 }
 
-func (vfdmgr *VfdManager) VfdWrite(vfd_id int8, data []byte, offset int64) (int, error) {
+func (vfdmgr *VfdManager) vfdWrite(vfd_id int8, data []byte, offset int64) (int, error) {
 	// make data to be written is a stream of bytes... for now
 	if e, ok := vfdmgr.vfd_lru_map[vfd_id]; ok {
 		vfd := e.Value.(Vfd)
@@ -149,7 +187,7 @@ func (vfdmgr *VfdManager) VfdWrite(vfd_id int8, data []byte, offset int64) (int,
 	return -1, errors.New("unable to find Vfd Id corresponding file")
 }
 
-func (vfdmgr *VfdManager) VfdRead(vfd_id int8, buffer []byte, offset int64) (int, error) {
+func (vfdmgr *VfdManager) vfdRead(vfd_id int8, buffer []byte, offset int64) (int, error) {
 	// can't assume it is always being opened
 	// if not in lru map, then find it in vfd table
 	// repoen it, change lru and other metadata

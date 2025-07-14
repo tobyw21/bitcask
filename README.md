@@ -63,3 +63,12 @@ no buffer pool (for now), it's a lightweight KV store DB so no need.
 no indexing, no need, search is (almost) linear O(1)
 
 for merge, in the initial stage don't implement it, let's keep multiple data files in the data dir
+
+TODO:
+
+- [] how to store `nextFree` in the hint file
+- [] read, write hint file
+- [] calculate crc
+- [] get function
+- [] delete function
+- [] merge (compact), later..

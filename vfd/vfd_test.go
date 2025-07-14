@@ -54,14 +54,13 @@ func TestVfdRWNormal(t *testing.T) {
 		t.FailNow()
 	}
 
-	// data := []byte("Hello world")
 	data := []byte{0x00, 0x01, 0xFE, 0xFF}
 
-	vfdmgr.VfdWrite(vfdid, data, 0)
+	vfdmgr.vfdWrite(vfdid, data, 0)
 
 	buffer := make([]byte, 12)
 
-	nread, err := vfdmgr.VfdRead(vfdid, buffer, 0)
+	nread, err := vfdmgr.vfdRead(vfdid, buffer, 0)
 	t.Logf(`read to buffer %d, %v`, nread, string(buffer))
 	if err != nil {
 		t.Error(err)

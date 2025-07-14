@@ -5,11 +5,13 @@ import (
 )
 
 func TestBitStore(t *testing.T) {
-	b := BitStore[int32]("bitstore1")
+	b := BitStore[int]("store1")
 
-	b.Set("data1", 1)
+	err := b.Set("apple", 1)
 
-	d := b.Get("data1")
+	if err != nil {
+		t.Log(err)
+		t.FailNow()
+	}
 
-	t.Logf("data get = %d", d)
 }
