@@ -66,9 +66,9 @@ for merge, in the initial stage don't implement it, let's keep multiple data fil
 
 TODO:
 
- - [ ] how to store `nextFree` in the hint file
- - [ ] read, write hint file
- - [ ] calculate crc
- - [ ] get function
- - [ ] delete function
- - [ ] merge (compact), later..
+- [ ] how to store `nextFree` in the hint file
+- [ ] read, write hint file
+- [ ] calculate crc
+- [ ] get function
+- [ ] delete function
+- [ ] merge (compact), later..
