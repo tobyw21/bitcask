@@ -3,7 +3,7 @@ package storage
 import (
 	"testing"
 
-	vfd "github.com/tobyw21/bitcask/vfd"
+	"github.com/tobyw21/bitcask/vfd"
 )
 
 func TestWriteCatalog(t *testing.T) {

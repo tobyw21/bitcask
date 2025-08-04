@@ -3,9 +3,10 @@ package vfd
 import (
 	"container/list"
 	"errors"
+	"fmt"
 	"os"
-	"syscall"
 	ospath "path"
+	"syscall"
 )
 
 /*
@@ -39,6 +40,7 @@ type VfdWriter struct {
 type VfdReader struct {
 	Vfdid  int8
 	Offset int64
+	Readn int64
 	Vfdmgr *VfdManager
 }
 
@@ -193,12 +195,14 @@ func (vfdmgr *VfdManager) vfdRead(vfd_id int8, buffer []byte, offset int64) (int
 	// repoen it, change lru and other metadata
 	// else the vfd_id is invalid
 	// find correct fd to read
+	
 	if e, ok := vfdmgr.vfd_lru_map[vfd_id]; ok {
+
 		vfd := e.Value.(Vfd)
 		vfdmgr.open_vfds.Remove(e)
 		vfdmgr.open_vfds.PushFront(e)
 		nread, err := syscall.Pread(vfd.os_fd, buffer, offset)
-
+		
 		if err != nil {
 			return -1, err
 		}
@@ -208,8 +212,9 @@ func (vfdmgr *VfdManager) vfdRead(vfd_id int8, buffer []byte, offset int64) (int
 		// if not in lru map means not opened
 		// open it from vfd table
 		if vfd, ok := vfdmgr.vfd_table[vfd_id]; ok {
-
-			vfd_id, err := vfdmgr.VfdOpen(vfd.file_path)
+			var err error
+			vfd_id, err = vfdmgr.VfdOpen(vfd.file_path)
+			
 			if err != nil {
 				return -1, err
 			}
@@ -220,14 +225,13 @@ func (vfdmgr *VfdManager) vfdRead(vfd_id int8, buffer []byte, offset int64) (int
 			vfdmgr.vfd_lru_map[vfd_id] = vfd_elem
 			vfdmgr.vfd_path_id[vfd.file_path] = vfd.id
 			nread, err := syscall.Pread(vfd.os_fd, buffer, offset)
-
 			if err != nil {
 				return -1, err
 			}
-
+			
 			return nread, nil
-
 		}
+			
 	}
 
 	return -1, errors.New("unable to find Vfd Id corresponding file")
@@ -240,6 +244,7 @@ func (vfdmgr *VfdManager) VfdClose(vfd_id int8) error {
 		vfdmgr.open_vfds.Remove(e)
 		// delete(vfdmgr.vfd_table, vfd.file_path)
 		delete(vfdmgr.vfd_lru_map, vfd.id)
+		fmt.Println(vfd.os_fd)
 		err := syscall.Close(vfd.os_fd)
 		if err != nil {
 			return err

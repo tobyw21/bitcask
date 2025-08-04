@@ -5,7 +5,7 @@ import (
 	"os"
 
 	"github.com/tobyw21/bitcask/include"
-	vfd "github.com/tobyw21/bitcask/vfd"
+	"github.com/tobyw21/bitcask/vfd"
 )
 
 /*

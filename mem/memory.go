@@ -6,16 +6,17 @@ package mem
 
 import (
 	"github.com/tobyw21/bitcask/include"
+	"github.com/tobyw21/bitcask/vfd"
 )
 
 type KeyDir struct {
 	FileId    include.Oid
-	ValueSz   uintptr
+	ValueSz   int64
 	ValuePos  int64
 	TimeStamp int64
 }
 
-func NewKeyDir(fileid include.Oid, valsize uintptr, valpos int64, timestmp int64) KeyDir {
+func NewKeyDir(fileid include.Oid, valsize int64, valpos int64, timestmp int64) KeyDir {
 	return KeyDir{
 		FileId:    fileid,
 		ValueSz:   valsize,
@@ -24,7 +25,7 @@ func NewKeyDir(fileid include.Oid, valsize uintptr, valpos int64, timestmp int64
 	}
 }
 
-func WriteHint() {
+func WriteHint(vfdmgr vfd.VfdManager,  kdm map[string]KeyDir) {
 
 }
 

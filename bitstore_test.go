@@ -5,7 +5,7 @@ import (
 )
 
 func TestBitStore(t *testing.T) {
-	b := BitStore[int]("store1")
+	b := BitStore("store1")
 
 	err := b.Set("apple", 1)
 
@@ -13,5 +13,15 @@ func TestBitStore(t *testing.T) {
 		t.Log(err)
 		t.FailNow()
 	}
+
+	v, err := b.Get("apple")
+	if err != nil {
+		t.Log(err)
+		t.FailNow()
+	}
+
+	t.Logf("returned value = %d", v)
+
+	b.Close()
 
 }

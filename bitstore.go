@@ -17,7 +17,7 @@ import (
 
 */
 
-type BitStoreManager[T any] struct {
+type BitStoreManager struct {
 	kvoid     include.Oid
 	name      string
 	currFile  include.Oid
@@ -27,7 +27,7 @@ type BitStoreManager[T any] struct {
 	keydirMap map[string]mem.KeyDir
 }
 
-func BitStore[T any](name string) *BitStoreManager[T] {
+func BitStore(name string) *BitStoreManager {
 
 	v := vfd.NewVfdMgr()
 	c, err := storage.CatalogRead(v, "data/catalog")
@@ -42,7 +42,7 @@ func BitStore[T any](name string) *BitStoreManager[T] {
 	// kd := mem.ReadHint()
 	kd := make(map[string]mem.KeyDir)
 
-	return &BitStoreManager[T]{
+	return &BitStoreManager{
 		kvoid:     kvoid,
 		name:      name,
 		currFile:  curroid,
@@ -52,37 +52,56 @@ func BitStore[T any](name string) *BitStoreManager[T] {
 	}
 }
 
-func (b *BitStoreManager[T]) Get(key string) T {
-	var t T
-	return t
+func (b *BitStoreManager) Get(key string) (interface{}, error) {
+	return nil, nil
 }
 
-func (b *BitStoreManager[T]) Set(key string, value T) error {
+func (b *BitStoreManager) Set(key string, value interface{}) error {
 
 	filepath := fmt.Sprintf("data/%d/%d", b.kvoid, b.currFile)
 	vid, err := b.vfdMgr.VfdOpen(filepath)
-	defer b.vfdMgr.VfdClose(vid)
+	// defer b.vfdMgr.VfdClose(vid)
 
 	if err != nil {
 		return err
 	}
 
 	w := &vfd.VfdWriter{Vfdid: vid, Offset: b.nextFree, Vfdmgr: b.vfdMgr}
+	
+
 	var t int64 = time.Now().Unix()
-	vs := reflect.TypeOf(value).Size()
+	vs := int64(reflect.TypeOf(value).Size())
 	kd := mem.NewKeyDir(b.currFile, vs, b.nextFree, t)
 	b.keydirMap[key] = kd
 
-	kve := storage.KVEntry[T]{
+	kve := storage.KVEntry{
 		Crc:       "something",
 		TimeStamp: t,
-		KeySz:     reflect.TypeOf(key).Size(),
+		KeySz:     int64(len(key)), // int64(reflect.TypeOf(key).Size()),
 		ValueSz:   vs,
 		Key:       key,
 		Value:     value,
 	}
 
-	enc := gob.NewEncoder(w)
-	err = enc.Encode(&kve)
+	b.nextFree += int64(reflect.TypeOf(kve).Size())
+
+	
 	return err
+}
+
+func (b *BitStoreManager) Delete(key string, value interface{}) error {
+	return nil
+}
+
+func (b *BitStoreManager) Close() error {
+	err := b.catMgr.CatalogWrite(b.vfdMgr, "data/catalog")
+
+	if err != nil {
+		return err
+	}
+
+	mem.WriteHint(*b.vfdMgr, b.keydirMap)
+
+	b.vfdMgr.VfdClean()
+	return nil
 }
